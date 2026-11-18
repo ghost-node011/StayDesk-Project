@@ -24,8 +24,11 @@
   </dl>
   <div class="summary">
     <div class="row"><span>Bill amount (rent {{ p.bill_amount|inr }} + late fee {{ p.late_fee|inr }})</span><span class="num">{{ (p.bill_amount + p.late_fee)|inr }}</span></div>
+    {% if p.paid_before > 0 %}<div class="row muted"><span>Paid earlier</span><span class="num">{{ p.paid_before|inr }}</span></div>{% endif %}
     <div class="row total" style="font-size:1.25rem"><span>Amount received</span><span class="num">{{ p.amount|inr(true) }}</span></div>
-    <div class="row muted"><span>Balance on this bill now</span><span class="num">{{ p.balance|inr }}</span></div>
+    {% set after = p.bill_amount + p.late_fee - p.paid_before - p.amount %}
+    <div class="row muted"><span>Balance after this payment</span><span class="num">{{ (after if after > 0 else 0)|inr }}</span></div>
+    {% if after < 0 %}<div class="row muted"><span>Excess paid (adjusted in deposit settlement)</span><span class="num">{{ (-after)|inr }}</span></div>{% endif %}
   </div>
   <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:32px">
     <span class="paid-stamp">PAID</span>

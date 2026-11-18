@@ -649,6 +649,8 @@ def receipt(payment_id):
     db = get_db()
     p = db.execute(
         """SELECT p.*, s.month, s.amount AS bill_amount, s.late_fee, s.paid AS bill_paid, s.balance,
+                  COALESCE((SELECT SUM(e.amount) FROM payments e WHERE e.bill_id = p.bill_id
+                             AND (e.paid_on, e.id) < (p.paid_on, p.id)), 0) AS paid_before,
                   s.days_billed, s.days_in_month, s.monthly_rent, s.due_date,
                   r.id AS rid, r.name, r.phone, rm.number AS room, rm.block, r.bed_no
            FROM payments p JOIN bill_status s ON s.id = p.bill_id
