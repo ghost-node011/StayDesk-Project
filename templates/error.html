@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block body %}
+<main class="wrap" style="padding-top:12vh;text-align:center">
+  <div class="logo" style="margin:0 auto 16px;width:44px;height:44px;font-size:20px">H</div>
+  <p class="muted" style="font-weight:600">Error {{ code }}</p>
+  <h1>{{ title }}</h1>
+  {% if message %}<p class="muted" style="margin-top:8px">{{ message }}</p>{% endif %}
+  <p style="margin-top:20px"><a class="btn" href="{{ url_for('index') }}">Go to home</a></p>
+</main>
+{% endblock %}

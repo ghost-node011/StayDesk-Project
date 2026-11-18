@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}Rooms{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Rooms</h1><p>{{ total - free }} of {{ total }} beds occupied · {{ free }} free</p></div>
+  <div class="seg">
+    <a href="{{ url_for('rooms') }}" class="{{ 'on' if not block }}">All</a>
+    <a href="{{ url_for('rooms', block='Boys') }}" class="{{ 'on' if block == 'Boys' }}">Boys block</a>
+    <a href="{{ url_for('rooms', block='Girls') }}" class="{{ 'on' if block == 'Girls' }}">Girls block</a>
+  </div>
+</div>
+
+<div class="legend">
+  <span><i class="bed on"></i> occupied</span>
+  <span><i class="bed"></i> vacant</span>
+</div>
+
+<div class="room-grid">
+{% for r in rooms %}
+  <article class="card room {{ 'has-free' if r.free else 'full' }}">
+    <div class="room-top">
+      <span class="room-no">{{ r.number }}</span>
+      <span class="room-meta">{{ r.block }} · floor {{ r.floor }}{% if r.is_ac %} · <b>AC</b>{% endif %}</span>
+    </div>
+    <div class="beds" aria-label="{{ r.occupied }} of {{ r.beds }} beds occupied">
+      {% for o in r.bed_list %}<i class="bed {{ 'on' if o }}"></i>{% endfor %}
+    </div>
+    <div class="room-meta">{{ r.rent_per_bed|inr }} per bed · {{ r.beds }}-seater</div>
+    <ul class="occupants">
+      {% for o in r.bed_list %}
+        <li>
+          <span class="bedno">Bed {{ loop.index }}</span>
+          {% if o %}<a href="{{ url_for('resident_detail', resident_id=o.id) }}">{{ o.name }}</a>
+          {% else %}<span class="free"><a href="{{ url_for('admit', room=r.id) }}">Free — admit</a></span>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+    <div class="room-foot">
+      {% if r.free %}<span class="pill ok">{{ r.free }} bed{{ 's' if r.free > 1 }} free</span>{% else %}<span class="pill">Full</span>{% endif %}
+      <a href="{{ url_for('edit_room', room_id=r.id) }}">Edit</a>
+    </div>
+  </article>
+{% else %}
+  <div class="card empty">No rooms yet. Add one below.</div>
+{% endfor %}
+</div>
+
+<section class="card card-pad" style="margin-top:20px">
+  <h2 style="margin-bottom:14px">Add a room</h2>
+  <form method="post" action="{{ url_for('add_room') }}">
+    {{ csrf() }}
+    <div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+      <label class="field">Room number<input type="text" name="number" maxlength="10" required placeholder="e.g. 205"></label>
+      <label class="field">Block<select name="block"><option>Boys</option><option>Girls</option></select></label>
+      <label class="field">Floor<input type="number" name="floor" min="0" max="20" value="1" required></label>
+      <label class="field">Beds<select name="beds">{% for n in range(1, 7) %}<option {{ 'selected' if n == 2 }}>{{ n }}</option>{% endfor %}</select></label>
+      <label class="field">Rent per bed (₹)<input type="number" name="rent_per_bed" min="1" step="1" required placeholder="7000"></label>
+      <label class="check" style="align-self:end;min-height:38px"><input type="checkbox" name="is_ac"> Air-conditioned</label>
+    </div>
+    <div class="form-actions"><button class="btn">Add room</button></div>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% from "_macros.html" import bill_pill, complaint_pill, prorate_note, csrf %}
+{% block title %}My stay{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Hi, {{ r.name.split()[0] }} 👋</h1>
+    <p>{% if r.status == 'active' %}Room {{ r.room }} · bed {{ r.bed_no }} · {{ r.block }} block, floor {{ r.floor }}{{ ' · AC' if r.is_ac }}
+       {% else %}You checked out on {{ r.checked_out_on|d }}.{% endif %}</p></div>
+</div>
+
+<div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+  <div class="card stat">
+    <div class="value {{ 'danger' if due > 0 else '' }}">{{ due|inr }}</div>
+    <div class="label">{% if due > 0 %}to pay{% if next_due %} · {{ 'was due' if next_due.due_date < today else 'due' }} {{ next_due.due_date|d('%d %b') }}{% endif %}{% else %}nothing due — thank you!{% endif %}</div>
+  </div>
+  <div class="card stat"><div class="value">{{ r.monthly_rent|inr }}</div><div class="label">monthly rent · due on the 10th</div></div>
+  <div class="card stat"><div class="value">{{ r.deposit|inr }}</div><div class="label">security deposit held</div></div>
+  <div class="card stat"><div class="value" style="font-size:1.15rem;line-height:1.5">{% for m in roommates %}{{ m.name }}{{ '' if loop.last else ', ' }}{% else %}—{% endfor %}</div>
+    <div class="label">roommate{{ 's' if roommates|length != 1 }}</div></div>
+</div>
+
+{% if due > 0 %}
+<div class="callout warn" style="margin-bottom:16px">Pay at the warden's office by UPI or cash and you'll get a receipt here. After the due date a late fee of ₹50 a day is added (max ₹500 per bill).</div>
+{% endif %}
+
+{% if settlement %}
+<section class="card card-pad" style="margin-bottom:16px">
+  <h2 style="margin-bottom:12px">Deposit settlement</h2>
+  <div class="summary" style="max-width:420px">
+    <div class="row"><span>Security deposit</span><span class="num">{{ settlement.deposit|inr }}</span></div>
+    <div class="row"><span>Rent &amp; late fees due</span><span class="num">− {{ settlement.dues|inr }}</span></div>
+    <div class="row"><span>Damages</span><span class="num">− {{ settlement.damages|inr }}</span></div>
+    {% if settlement.damage_note %}<div class="hint">{{ settlement.damage_note }}</div>{% endif %}
+    <div class="row total"><span>{{ 'Refund' if settlement.refund >= 0 else 'You still owe' }}</span><span class="num">{{ settlement.refund|abs|inr }}</span></div>
+  </div>
+</section>
+{% endif %}
+
+<div class="grid grid-side">
+  <div>
+    <section class="card" id="rent">
+      <div class="card-head"><h2>Rent</h2></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Month</th><th class="right">Rent</th><th class="right">Late fee</th><th class="right">Paid</th><th class="right">Balance</th><th>Status</th></tr></thead>
+        <tbody>
+        {% for b in bills %}
+          <tr><td>{{ b.month|d('%B %Y') }}{{ prorate_note(b) }}</td><td class="right num">{{ b.amount|inr }}</td>
+            <td class="right num">{{ b.late_fee|inr if b.late_fee else '—' }}</td><td class="right num">{{ b.paid|inr }}</td>
+            <td class="right num"><b>{{ b.balance|inr }}</b></td><td>{{ bill_pill(b) }}</td></tr>
+        {% else %}<tr><td colspan="6" class="empty">No bills yet.</td></tr>{% endfor %}
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>Receipts</h2></div>
+      <div class="table-wrap"><table class="table-compact">
+        <thead><tr><th>Receipt</th><th>Date</th><th>For</th><th>Method</th><th class="right">Amount</th></tr></thead>
+        <tbody>
+        {% for p in payments %}
+          <tr><td><a href="{{ url_for('receipt', payment_id=p.id) }}">{{ p.receipt_no }}</a></td><td class="num">{{ p.paid_on|d }}</td>
+            <td>{{ p.month|d('%b %Y') }}</td><td>{{ p.method }}</td><td class="right num">{{ p.amount|inr }}</td></tr>
+        {% else %}<tr><td colspan="5" class="empty">No payments yet.</td></tr>{% endfor %}
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="card" id="complaints">
+      <div class="card-head"><h2>My complaints</h2></div>
+      {% if r.status == 'active' %}
+      <form method="post" action="{{ url_for('raise_complaint') }}" class="card-pad" style="padding-top:4px;border-bottom:1px solid var(--border)">
+        {{ csrf() }}
+        <div class="form-grid">
+          <label class="field">Category<select name="category" required>{% for c in categories %}<option>{{ c }}</option>{% endfor %}</select></label>
+          <label class="field">Short title<input type="text" name="title" maxlength="120" required placeholder="e.g. Fan not working"></label>
+          <label class="field full">What's wrong?<textarea name="description" maxlength="2000" required rows="3"></textarea></label>
+        </div>
+        <div class="form-actions" style="margin-top:12px"><button class="btn">Send to warden</button></div>
+      </form>
+      {% endif %}
+      <ul class="list">
+        {% for c in complaints %}
+          <li><div class="title">{{ complaint_pill(c.status) }} <b>{{ c.title }}</b> <span class="muted">· {{ c.category }} · {{ c.created_at|ago }}</span></div>
+            <div class="sub">{{ c.description }}</div>
+            {% if c.warden_note %}<div class="sub" style="color:var(--brand-strong)">Warden: {{ c.warden_note }}</div>{% endif %}</li>
+        {% else %}<li class="empty">You haven't raised any complaints.</li>{% endfor %}
+      </ul>
+    </section>
+  </div>
+
+  <aside class="card" id="notices" style="align-self:start">
+    <div class="card-head"><h2>Notices</h2></div>
+    <ul class="list">
+      {% for n in notices %}
+        <li><div class="title">{% if n.pinned %}📌{% endif %}<b>{{ n.title }}</b></div>
+          <p class="sub" style="white-space:pre-line">{{ n.body }}</p><div class="faint" style="font-size:12px">{{ n.created_at|d }}</div></li>
+      {% else %}<li class="empty">No notices.</li>{% endfor %}
+    </ul>
+  </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% from "_macros.html" import bill_pill, complaint_pill, prorate_note %}
+{% block title %}{{ r.name }}{% endblock %}
+{% block content %}
+<a class="crumb" href="{{ url_for('residents') }}">← Residents</a>
+<div class="page-head">
+  <div>
+    <h1>{{ r.name }}</h1>
+    <p>Room {{ r.room }} · bed {{ r.bed_no }} · {{ r.block }} block
+      {% if r.status == 'active' %}<span class="pill brand">Staying</span>{% else %}<span class="pill">Checked out {{ r.checked_out_on|d }}</span>{% endif %}</p>
+  </div>
+  <div class="head-actions">
+    <a class="btn btn-ghost" href="{{ url_for('edit_resident', resident_id=r.id) }}">Edit details</a>
+    {% if r.status == 'active' %}<a class="btn btn-ghost" href="{{ url_for('checkout', resident_id=r.id) }}">Check out</a>{% endif %}
+  </div>
+</div>
+
+<div class="grid grid-side">
+  <div>
+    <section class="card">
+      <div class="card-head"><h2>Rent bills</h2>
+        {% if due > 0 %}<span class="pill danger">{{ due|inr }} due</span>{% else %}<span class="pill ok">No dues</span>{% endif %}
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Month</th><th class="right">Rent</th><th class="right">Late fee</th><th class="right">Paid</th><th class="right">Balance</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+          {% for b in bills %}
+            <tr>
+              <td>{{ b.month|d('%B %Y') }}{{ prorate_note(b) }}</td>
+              <td class="right num">{{ b.amount|inr }}</td>
+              <td class="right num">{{ b.late_fee|inr if b.late_fee else '—' }}</td>
+              <td class="right num">{{ b.paid|inr }}</td>
+              <td class="right num"><b>{{ b.balance|inr }}</b></td>
+              <td>{{ bill_pill(b) }}</td>
+              <td class="actions">{% if b.balance > 0 %}<a class="btn btn-sm" href="{{ url_for('pay_bill', bill_id=b.id) }}">Collect</a>{% endif %}</td>
+            </tr>
+          {% else %}<tr><td colspan="7" class="empty">No bills yet.</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>Payments &amp; receipts</h2></div>
+      <div class="table-wrap">
+        <table class="table-compact">
+          <thead><tr><th>Receipt</th><th>Date</th><th>For</th><th>Method</th><th class="right">Amount</th></tr></thead>
+          <tbody>
+          {% for p in payments %}
+            <tr>
+              <td><a href="{{ url_for('receipt', payment_id=p.id) }}">{{ p.receipt_no }}</a></td>
+              <td class="num">{{ p.paid_on|d }}</td>
+              <td>{{ p.month|d('%b %Y') }}</td>
+              <td>{{ p.method }}</td>
+              <td class="right num">{{ p.amount|inr }}</td>
+            </tr>
+          {% else %}<tr><td colspan="5" class="empty">No payments yet.</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>Complaints</h2></div>
+      <ul class="list">
+        {% for c in complaints %}
+          <li><div class="title">{{ complaint_pill(c.status) }} <b>{{ c.title }}</b> <span class="muted">· {{ c.category }}</span></div>
+              <div class="sub">{{ c.description }} <span class="faint">· {{ c.created_at|ago }}</span></div></li>
+        {% else %}<li class="empty">No complaints.</li>{% endfor %}
+      </ul>
+    </section>
+  </div>
+
+  <aside>
+    {% if settlement %}
+    <section class="card card-pad">
+      <h2 style="margin-bottom:12px">Deposit settlement</h2>
+      <div class="summary">
+        <div class="row"><span>Security deposit</span><span class="num">{{ settlement.deposit|inr }}</span></div>
+        <div class="row"><span>Rent &amp; late fees due</span><span class="num">− {{ settlement.dues|inr }}</span></div>
+        <div class="row"><span>Damages</span><span class="num">− {{ settlement.damages|inr }}</span></div>
+        {% if settlement.damage_note %}<div class="hint">{{ settlement.damage_note }}</div>{% endif %}
+        <div class="row total"><span>{{ 'Refunded' if settlement.refund >= 0 else 'Still payable' }}</span><span class="num">{{ settlement.refund|abs|inr }}</span></div>
+      </div>
+    </section>
+    {% endif %}
+    <section class="card card-pad">
+      <h2 style="margin-bottom:12px">Details</h2>
+      <dl class="kv">
+        <dt>Phone</dt><dd class="num">{{ r.phone }}</dd>
+        <dt>Email / login</dt><dd style="word-break:break-all">{{ r.email }}</dd>
+        <dt>Gender</dt><dd>{{ r.gender }}</dd>
+        <dt>College / work</dt><dd>{{ r.institution or '—' }}</dd>
+        <dt>ID proof</dt><dd>{{ r.id_proof or '—' }}</dd>
+        <dt>Guardian</dt><dd>{{ r.guardian_name or '—' }}{% if r.guardian_phone %}<br><span class="num muted">{{ r.guardian_phone }}</span>{% endif %}</dd>
+        <dt>Admitted</dt><dd>{{ r.admitted_on|d }}</dd>
+        <dt>Monthly rent</dt><dd class="num">{{ r.monthly_rent|inr }}</dd>
+        <dt>Deposit</dt><dd class="num">{{ r.deposit|inr }}</dd>
+      </dl>
+    </section>
+  </aside>
+</div>
+{% endblock %}

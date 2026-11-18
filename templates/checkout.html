@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}Check out {{ r.name }}{% endblock %}
+{% block content %}
+<a class="crumb" href="{{ url_for('resident_detail', resident_id=r.id) }}">← {{ r.name }}</a>
+<div class="page-head"><div><h1>Check out {{ r.name }}</h1><p>Room {{ r.room }} · bed {{ r.bed_no }} · admitted {{ r.admitted_on|d }}</p></div></div>
+{% if error %}<div class="flash error">{{ error }}</div>{% endif %}
+<div class="grid grid-side">
+  <div>
+    <form method="get" class="card card-pad">
+      <div class="form-grid">
+        <label class="field">Checkout date<input type="date" name="checkout_date" value="{{ checkout_date }}" required></label>
+        <label class="field">Damages to deduct (₹)<input type="number" name="damages" min="0" step="1" value="{{ damages }}"></label>
+        <label class="field full">Damage note<input type="text" name="damage_note" maxlength="200" value="{{ damage_note }}" placeholder="e.g. broken cupboard lock"></label>
+      </div>
+      <div class="form-actions"><button class="btn btn-ghost">Recalculate</button></div>
+    </form>
+    {% if plan %}
+    <section class="card">
+      <div class="card-head"><h2>Bills at checkout</h2></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Month</th><th class="right">Rent now</th><th class="right">Rent after</th><th class="right">Late fee</th><th class="right">Paid</th><th class="right">Balance</th></tr></thead>
+          <tbody>
+          {% for l in plan.lines %}
+            <tr style="{{ 'opacity:.55' if l.action == 'cancel' }}">
+              <td>{{ l.month|d('%B %Y') }}
+                {% if l.action == 'prorate' %}<div class="hint">prorated to {{ l.new_days }}/{{ l.days_in_month }} days</div>
+                {% elif l.action == 'add' %}<div class="hint">new bill, {{ l.new_days }}/{{ l.days_in_month }} days</div>
+                {% elif l.action == 'cancel' %}<div class="hint">cancelled — after checkout</div>
+                {% elif l.action == 'zero' %}<div class="hint">after checkout — paid amount becomes credit</div>{% endif %}
+              </td>
+              <td class="right num">{{ l.amount|inr }}</td>
+              <td class="right num">{{ l.new_amount|inr }}</td>
+              <td class="right num">{{ l.late_fee|inr if l.late_fee else '—' }}</td>
+              <td class="right num">{{ l.paid|inr }}</td>
+              <td class="right num"><b>{{ l.new_balance|inr if l.action != 'cancel' else '—' }}</b></td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endif %}
+  </div>
+  <aside>
+    {% if plan %}
+    <section class="card card-pad">
+      <h2 style="margin-bottom:12px">Deposit settlement</h2>
+      <div class="summary">
+        <div class="row"><span>Security deposit</span><span class="num">{{ plan.deposit|inr }}</span></div>
+        <div class="row"><span>Rent &amp; late fees due</span><span class="num">− {{ plan.dues|inr }}</span></div>
+        <div class="row"><span>Damages</span><span class="num">− {{ plan.damages|inr }}</span></div>
+        <div class="row total"><span>{{ 'Refund to resident' if plan.refund >= 0 else 'Resident still owes' }}</span>
+          <span class="num" style="color:{{ 'var(--ok)' if plan.refund >= 0 else 'var(--danger)' }}">{{ plan.refund|abs|inr }}</span></div>
+      </div>
+      <form method="post" style="margin-top:16px" data-confirm="Check out {{ r.name }} on {{ plan.checkout_date|d }}? This frees the bed and can't be undone.">
+        {{ csrf() }}
+        <input type="hidden" name="checkout_date" value="{{ checkout_date }}">
+        <input type="hidden" name="damages" value="{{ damages }}">
+        <input type="hidden" name="damage_note" value="{{ damage_note }}">
+        <button class="btn btn-danger btn-block">Confirm checkout</button>
+      </form>
+      <p class="hint" style="margin-top:10px">Unpaid bills are cleared from the deposit and recorded as “Deposit adjustment” payments.</p>
+    </section>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

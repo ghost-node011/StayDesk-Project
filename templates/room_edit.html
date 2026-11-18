@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}Room {{ room.number }}{% endblock %}
+{% block content %}
+<a class="crumb" href="{{ url_for('rooms') }}">← Rooms</a>
+<div class="page-head"><div><h1>Edit room {{ room.number }}</h1><p>{{ room.occupied }} of {{ room.beds }} beds occupied</p></div></div>
+<div class="card card-pad" style="max-width:640px">
+  <form method="post">
+    {{ csrf() }}
+    <div class="form-grid">
+      <label class="field">Room number<input type="text" name="number" maxlength="10" required value="{{ request.form.number or room.number }}"></label>
+      <label class="field">Block
+        <select name="block">{% for b in ('Boys','Girls') %}<option {{ 'selected' if (request.form.block or room.block) == b }}>{{ b }}</option>{% endfor %}</select>
+      </label>
+      <label class="field">Floor<input type="number" name="floor" min="0" max="20" required value="{{ request.form.floor or room.floor }}"></label>
+      <label class="field">Beds
+        <select name="beds">{% for n in range(1, 7) %}<option {{ 'selected' if (request.form.beds or room.beds)|int == n }}>{{ n }}</option>{% endfor %}</select>
+      </label>
+      <label class="field">Rent per bed (₹) <span class="hint">Applies to new admissions</span>
+        <input type="number" name="rent_per_bed" min="1" step="1" required value="{{ request.form.rent_per_bed or room.rent_per_bed|int }}"></label>
+      <label class="check" style="align-self:end;min-height:38px"><input type="checkbox" name="is_ac" {{ 'checked' if room.is_ac }}> Air-conditioned</label>
+    </div>
+    <div class="form-actions"><a class="btn btn-ghost" href="{{ url_for('rooms') }}">Cancel</a><button class="btn">Save room</button></div>
+  </form>
+</div>
+<form method="post" action="{{ url_for('delete_room', room_id=room.id) }}" data-confirm="Delete room {{ room.number }}?" style="margin-top:16px">
+  {{ csrf() }}<button class="link-btn danger">Delete this room</button> <span class="hint">Only possible if nobody has ever stayed in it.</span>
+</form>
+{% endblock %}

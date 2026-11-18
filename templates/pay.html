@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% from "_macros.html" import bill_pill, csrf %}
+{% block title %}Collect rent · {{ bill.name }}{% endblock %}
+{% block content %}
+<a class="crumb" href="{{ url_for('rent', month=bill.month.strftime('%Y-%m')) }}">← Rent for {{ bill.month|d('%B %Y') }}</a>
+<div class="page-head"><div><h1>{{ bill.name }} · {{ bill.month|d('%B %Y') }}</h1><p>Room {{ bill.room }} · due {{ bill.due_date|d }} {{ bill_pill(bill) }}</p></div></div>
+<div class="grid grid-side">
+  <div>
+    {% if bill.balance > 0 %}
+    <section class="card card-pad">
+      <h2 style="margin-bottom:14px">Record a payment</h2>
+      <form method="post">
+        {{ csrf() }}
+        <div class="form-grid">
+          <label class="field">Amount (₹)<input type="number" name="amount" min="1" max="{{ bill.balance }}" step="0.01" required value="{{ request.form.amount or bill.balance }}"></label>
+          <label class="field">Date<input type="date" name="paid_on" required max="{{ today.isoformat() }}" value="{{ request.form.paid_on or today.isoformat() }}"></label>
+          <label class="field">Method<select name="method">{% for m in methods %}<option {{ 'selected' if request.form.method == m }}>{{ m }}</option>{% endfor %}</select></label>
+          <label class="field">Reference <span class="hint">UPI ref / cheque no. (optional)</span><input type="text" name="reference" maxlength="60" value="{{ request.form.reference }}"></label>
+        </div>
+        <div class="form-actions"><button class="btn">Save &amp; make receipt</button></div>
+      </form>
+    </section>
+    {% else %}
+      <div class="callout">This bill is fully paid.</div>
+    {% endif %}
+    <section class="card">
+      <div class="card-head"><h2>Payments on this bill</h2></div>
+      <div class="table-wrap"><table class="table-compact">
+        <thead><tr><th>Receipt</th><th>Date</th><th>Method</th><th class="right">Amount</th></tr></thead>
+        <tbody>
+        {% for p in payments %}
+          <tr><td><a href="{{ url_for('receipt', payment_id=p.id) }}">{{ p.receipt_no }}</a></td><td class="num">{{ p.paid_on|d }}</td><td>{{ p.method }}</td><td class="right num">{{ p.amount|inr }}</td></tr>
+        {% else %}<tr><td colspan="4" class="empty">Nothing paid yet.</td></tr>{% endfor %}
+        </tbody>
+      </table></div>
+    </section>
+  </div>
+  <aside class="card card-pad">
+    <h2 style="margin-bottom:12px">Bill</h2>
+    <div class="summary">
+      <div class="row"><span>Monthly rent</span><span class="num">{{ bill.monthly_rent|inr }}</span></div>
+      {% if bill.days_billed != bill.days_in_month %}
+      <div class="row"><span>Prorated ({{ bill.days_billed }}/{{ bill.days_in_month }} days)</span><span class="num">{{ bill.amount|inr }}</span></div>
+      {% endif %}
+      <div class="row"><span>Late fee</span><span class="num">{{ bill.late_fee|inr }}</span></div>
+      <div class="row"><span>Paid so far</span><span class="num">− {{ bill.paid|inr }}</span></div>
+      <div class="row total"><span>Balance</span><span class="num">{{ bill.balance|inr }}</span></div>
+    </div>
+    {% if bill.balance > 0 and bill.due_date >= today %}
+      <p class="hint" style="margin-top:12px">Pay by {{ bill.due_date|d }} to avoid a late fee.</p>
+    {% elif bill.balance > 0 %}
+      <p class="hint" style="margin-top:12px">Late fee keeps growing by ₹50 a day until the bill is cleared (max ₹500).</p>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

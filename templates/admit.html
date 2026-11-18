@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}Admit resident{% endblock %}
+{% block content %}
+<a class="crumb" href="{{ url_for('residents') }}">← Residents</a>
+<div class="page-head"><div><h1>Admit a resident</h1><p>The first month's rent is prorated from the admission date.</p></div></div>
+{% if not rooms %}
+  <div class="callout warn">Every bed is occupied. Add a room or check someone out first.</div>
+{% else %}
+<form method="post" class="grid grid-side">
+  {{ csrf() }}
+  <div class="card card-pad">
+    <h2 style="margin-bottom:14px">Personal details</h2>
+    <div class="form-grid">
+      <label class="field full">Full name<input type="text" name="name" required maxlength="100" value="{{ form.name }}"></label>
+      <label class="field">Gender
+        <select name="gender" id="gender" required>
+          <option value="">Choose…</option>
+          {% for gname in ('Male','Female') %}<option {{ 'selected' if form.gender == gname }}>{{ gname }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="field">Phone<input type="tel" name="phone" required maxlength="15" pattern="[0-9+ -]{7,15}" value="{{ form.phone }}"></label>
+      <label class="field">Email <span class="hint">Used to log in to the portal</span><input type="email" name="email" required maxlength="120" value="{{ form.email }}"></label>
+      <label class="field">Portal password <span class="hint">At least 8 characters</span><input type="text" name="password" required minlength="8" value="{{ form.password }}" autocomplete="off"></label>
+      <label class="field">College / workplace<input type="text" name="institution" maxlength="120" value="{{ form.institution }}"></label>
+      <label class="field">ID proof<input type="text" name="id_proof" maxlength="60" placeholder="Aadhaar XXXX-XXXX-1234" value="{{ form.id_proof }}"></label>
+      <label class="field">Guardian name<input type="text" name="guardian_name" maxlength="100" value="{{ form.guardian_name }}"></label>
+      <label class="field">Guardian phone<input type="tel" name="guardian_phone" maxlength="15" value="{{ form.guardian_phone }}"></label>
+    </div>
+  </div>
+  <div class="card card-pad">
+    <h2 style="margin-bottom:14px">Room &amp; money</h2>
+    <div class="grid" style="gap:14px">
+      <label class="field">Room <span class="hint">Only rooms with a free bed are listed</span>
+        <select name="room_id" id="room" required>
+          <option value="">Choose a room…</option>
+          {% for r in rooms %}
+            {% set sel = (form.room_id|int if form.room_id else preselect) == r.id %}
+            <option value="{{ r.id }}" data-block="{{ r.block }}" data-rent="{{ r.rent_per_bed|int }}" {{ 'selected' if sel }}>
+              {{ r.number }} · {{ r.block }} · {{ r.rent_per_bed|inr }}{{ ' · AC' if r.is_ac }} · {{ r.free }} free
+            </option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="field">Admission date<input type="date" name="admitted_on" required value="{{ form.admitted_on or today.isoformat() }}"></label>
+      <label class="field">Security deposit (₹) <span class="hint">Usually two months' rent</span>
+        <input type="number" name="deposit" id="deposit" min="0" step="1" required value="{{ form.deposit }}"></label>
+      <div class="callout" id="rent-note" hidden></div>
+      <button class="btn btn-block">Admit resident</button>
+    </div>
+  </div>
+</form>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var room = document.getElementById('room'), gender = document.getElementById('gender'),
+      deposit = document.getElementById('deposit'), note = document.getElementById('rent-note');
+  if (!room) return;
+  function sync() {
+    var want = gender.value === 'Male' ? 'Boys' : gender.value === 'Female' ? 'Girls' : null;
+    Array.from(room.options).forEach(function (o) { if (o.value) o.hidden = want && o.dataset.block !== want; });
+    if (room.selectedOptions[0] && room.selectedOptions[0].hidden) room.value = '';
+    var o = room.selectedOptions[0];
+    if (o && o.value) {
+      var rent = +o.dataset.rent;
+      if (!deposit.dataset.touched) deposit.value = rent * 2;
+      note.hidden = false;
+      note.textContent = 'Monthly rent ₹' + rent.toLocaleString('en-IN') + ' · due on the 10th · ₹50/day late fee after that (max ₹500).';
+    } else { note.hidden = true; }
+  }
+  deposit.addEventListener('input', function () { deposit.dataset.touched = 1; });
+  room.addEventListener('change', sync); gender.addEventListener('change', sync); sync();
+})();
+</script>
+{% endblock %}

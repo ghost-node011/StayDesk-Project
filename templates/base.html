@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ hostel_name }}{% endblock %} · {{ hostel_name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230f766e'/><text x='16' y='22' font-size='17' font-family='Arial' font-weight='700' fill='white' text-anchor='middle'>H</text></svg>">
+  <script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body>
+{% block body %}
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="brand" href="{{ url_for('index') }}"><span class="logo">{{ hostel_name[:1] }}</span>{{ hostel_name }}</a>
+    {% set ep = request.endpoint or '' %}
+    <nav class="nav" aria-label="Main">
+      {% if g.user.role == 'warden' %}
+        <a href="{{ url_for('dashboard') }}" class="{{ 'active' if ep == 'dashboard' }}">Dashboard</a>
+        <a href="{{ url_for('rooms') }}" class="{{ 'active' if ep in ('rooms','edit_room') }}">Rooms</a>
+        <a href="{{ url_for('residents') }}" class="{{ 'active' if ep in ('residents','admit','resident_detail','edit_resident','checkout') }}">Residents</a>
+        <a href="{{ url_for('rent') }}" class="{{ 'active' if ep in ('rent','pay_bill','receipt') }}">Rent</a>
+        <a href="{{ url_for('complaints') }}" class="{{ 'active' if ep == 'complaints' }}">Complaints</a>
+        <a href="{{ url_for('notices') }}" class="{{ 'active' if ep == 'notices' }}">Notices</a>
+      {% else %}
+        <a href="{{ url_for('portal') }}" class="{{ 'active' if ep == 'portal' }}">My stay</a>
+        <a href="{{ url_for('portal') }}#rent">Rent</a>
+        <a href="{{ url_for('portal') }}#complaints">Complaints</a>
+        <a href="{{ url_for('portal') }}#notices">Notices</a>
+      {% endif %}
+    </nav>
+    <div class="nav-right">
+      <div class="user-chip"><b>{{ g.user.name }}</b><span>{{ g.user.email }}</span></div>
+      <button class="icon-btn" type="button" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+      <a class="icon-btn" href="{{ url_for('change_password') }}" title="Change password" aria-label="Change password">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </a>
+      <form method="post" action="{{ url_for('logout') }}" class="inline-form">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+        <button class="icon-btn" title="Log out" aria-label="Log out">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+        </button>
+      </form>
+    </div>
+  </div>
+</header>
+<main class="wrap">
+  {% for cat, msg in get_flashed_messages(with_categories=true) %}
+    <div class="flash {{ cat }}" role="status">{{ msg }}</div>
+  {% endfor %}
+  {% block content %}{% endblock %}
+</main>
+{% endblock %}
+<script>
+document.getElementById('theme-toggle')?.addEventListener('click', function () {
+  var root = document.documentElement;
+  var dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem('theme', root.dataset.theme); } catch (e) {}
+});
+document.querySelectorAll('form[data-confirm]').forEach(function (f) {
+  f.addEventListener('submit', function (e) { if (!confirm(f.dataset.confirm)) e.preventDefault(); });
+});
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

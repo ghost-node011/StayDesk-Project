@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Receipt {{ p.receipt_no }}{% endblock %}
+{% block content %}
+<div class="no-print head-actions" style="justify-content:space-between;margin-bottom:16px">
+  <a class="crumb" href="{{ url_for('resident_detail', resident_id=p.rid) if g.user.role == 'warden' else url_for('portal') }}">← Back</a>
+  <button class="btn" onclick="window.print()">Print / save as PDF</button>
+</div>
+<article class="card receipt">
+  <div class="receipt-head">
+    <div>
+      <div class="brand"><span class="logo">{{ hostel_name[:1] }}</span>{{ hostel_name }}</div>
+      <p class="muted" style="margin-top:6px">Rent receipt</p>
+    </div>
+    <div class="right">
+      <div style="font-weight:700">{{ p.receipt_no }}</div>
+      <div class="muted num">{{ p.paid_on|d }}</div>
+    </div>
+  </div>
+  <dl class="kv" style="margin-bottom:20px">
+    <dt>Received from</dt><dd><b>{{ p.name }}</b></dd>
+    <dt>Room</dt><dd>{{ p.room }} · bed {{ p.bed_no }} · {{ p.block }} block</dd>
+    <dt>For</dt><dd>Rent for {{ p.month|d('%B %Y') }}{% if p.days_billed != p.days_in_month %} ({{ p.days_billed }} of {{ p.days_in_month }} days){% endif %}</dd>
+    <dt>Method</dt><dd>{{ p.method }}{% if p.reference %} · {{ p.reference }}{% endif %}</dd>
+  </dl>
+  <div class="summary">
+    <div class="row"><span>Bill amount (rent {{ p.bill_amount|inr }} + late fee {{ p.late_fee|inr }})</span><span class="num">{{ (p.bill_amount + p.late_fee)|inr }}</span></div>
+    <div class="row total" style="font-size:1.25rem"><span>Amount received</span><span class="num">{{ p.amount|inr(true) }}</span></div>
+    <div class="row muted"><span>Balance on this bill now</span><span class="num">{{ p.balance|inr }}</span></div>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:32px">
+    <span class="paid-stamp">PAID</span>
+    <span class="hint">Computer-generated receipt — no signature needed.</span>
+  </div>
+</article>
+{% endblock %}

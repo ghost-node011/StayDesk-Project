@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "_macros.html" import bill_pill, prorate_note, csrf %}
+{% block title %}Rent · {{ month|d('%B %Y') }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Rent</h1><p>Due on the 10th · ₹50 per day late fee after that, up to ₹500 per bill</p></div>
+  <form method="get" class="head-actions">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('rent', month=prev.strftime('%Y-%m'), status=status) }}" aria-label="Previous month">‹</a>
+    <input type="month" name="month" value="{{ month.strftime('%Y-%m') }}" onchange="this.form.submit()" style="width:auto" aria-label="Month">
+    <input type="hidden" name="status" value="{{ status }}">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('rent', month=next.strftime('%Y-%m'), status=status) }}" aria-label="Next month">›</a>
+  </form>
+</div>
+
+<div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
+  <div class="card stat"><div class="value">{{ totals.billed|inr }}</div><div class="label">billed for {{ month|d('%B') }} (incl. late fees)</div></div>
+  <div class="card stat"><div class="value">{{ totals.paid|inr }}</div><div class="label">collected against these bills</div>
+    <div class="meter"><span style="width:{{ (100 * totals.paid / totals.billed)|round|int if totals.billed else 0 }}%"></span></div></div>
+  <div class="card stat"><div class="value warn">{{ totals.balance|inr }}</div><div class="label">still to collect</div></div>
+</div>
+
+{% if missing and can_generate %}
+<div class="callout warn" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+  <span>{{ missing }} resident{{ 's' if missing != 1 }} {{ 'have' if missing != 1 else 'has' }} no bill for {{ month|d('%B %Y') }} yet.</span>
+  <form method="post" action="{{ url_for('generate_rent') }}">{{ csrf() }}<input type="hidden" name="month" value="{{ month.strftime('%Y-%m') }}">
+    <button class="btn btn-sm">Generate bills</button></form>
+</div>
+{% endif %}
+
+<div class="seg" style="margin-bottom:12px">
+  {% for key, label in [('all','All'),('overdue','Overdue'),('due','Due'),('paid','Paid')] %}
+    <a href="{{ url_for('rent', month=month.strftime('%Y-%m'), status=key) }}" class="{{ 'on' if status == key }}">{{ label }}
+      <span class="count">{{ totals.count.values()|sum if key == 'all' else totals.count[key] }}</span></a>
+  {% endfor %}
+</div>
+
+<div class="card table-wrap">
+  <table>
+    <thead><tr><th>Resident</th><th>Room</th><th class="right">Rent</th><th class="right">Late fee</th><th class="right">Paid</th><th class="right">Balance</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for b in bills %}
+      <tr>
+        <td><a href="{{ url_for('resident_detail', resident_id=b.rid) }}">{{ b.name }}</a>{% if b.rstatus != 'active' %} <span class="pill">left</span>{% endif %}</td>
+        <td>{{ b.room }}</td>
+        <td class="right num">{{ b.amount|inr }}{{ prorate_note(b) }}</td>
+        <td class="right num">{{ b.late_fee|inr if b.late_fee else '—' }}</td>
+        <td class="right num">{{ b.paid|inr }}</td>
+        <td class="right num"><b>{{ b.balance|inr }}</b></td>
+        <td>{{ bill_pill(b) }}</td>
+        <td class="actions">{% if b.balance > 0 %}<a class="btn btn-sm" href="{{ url_for('pay_bill', bill_id=b.id) }}">Collect</a>
+          {% else %}<a class="btn btn-sm btn-ghost" href="{{ url_for('pay_bill', bill_id=b.id) }}">Receipts</a>{% endif %}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="8" class="empty">No bills here.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Residents{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Residents</h1><p>{{ residents|length }} {{ 'checked-out' if status == 'checked_out' else ('' if status == 'all' else 'current') }} resident{{ 's' if residents|length != 1 }}</p></div>
+  <div class="head-actions"><a class="btn" href="{{ url_for('admit') }}">+ Admit resident</a></div>
+</div>
+<div class="head-actions" style="margin-bottom:14px;justify-content:space-between">
+  <div class="seg">
+    <a href="{{ url_for('residents', q=q or None) }}" class="{{ 'on' if status == 'active' }}">Current</a>
+    <a href="{{ url_for('residents', status='checked_out', q=q or None) }}" class="{{ 'on' if status == 'checked_out' }}">Checked out</a>
+    <a href="{{ url_for('residents', status='all', q=q or None) }}" class="{{ 'on' if status == 'all' }}">All</a>
+  </div>
+  <form method="get" style="display:flex;gap:8px;flex:1;max-width:360px">
+    <input type="hidden" name="status" value="{{ status }}">
+    <input type="search" name="q" value="{{ q }}" placeholder="Search name, phone or room" aria-label="Search residents">
+    <button class="btn btn-ghost">Search</button>
+  </form>
+</div>
+<div class="card table-wrap">
+  <table>
+    <thead><tr><th>Name</th><th>Room</th><th>Phone</th><th>Admitted</th><th class="right">Rent</th><th class="right">Dues</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for r in residents %}
+      <tr>
+        <td><a href="{{ url_for('resident_detail', resident_id=r.id) }}"><b>{{ r.name }}</b></a><div class="hint">{{ r.institution or '' }}</div></td>
+        <td>{{ r.room }} <span class="hint">· bed {{ r.bed_no }}</span></td>
+        <td class="num">{{ r.phone }}</td>
+        <td class="num">{{ r.admitted_on|d }}</td>
+        <td class="right num">{{ r.monthly_rent|inr }}</td>
+        <td class="right num">{% if r.due > 0 %}<span style="color:var(--danger);font-weight:600">{{ r.due|inr }}</span>{% else %}<span class="faint">—</span>{% endif %}</td>
+        <td>{% if r.status == 'active' %}<span class="pill brand">Staying</span>{% else %}<span class="pill">Left {{ r.checked_out_on|d('%d %b') }}</span>{% endif %}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" class="empty">No residents match.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

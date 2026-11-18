@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}Notices{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Notices</h1><p>Residents see notices for everyone plus their own block.</p></div></div>
+<div class="grid grid-side">
+  <section class="card">
+    <ul class="list">
+    {% for n in notices %}
+      <li>
+        <div style="display:flex;justify-content:space-between;gap:12px">
+          <div class="title">{% if n.pinned %}<span class="pill brand">📌 Pinned</span>{% endif %}<b>{{ n.title }}</b><span class="pill">{{ 'Everyone' if n.audience == 'All' else n.audience + ' block' }}</span></div>
+          <span class="faint" style="font-size:12.5px;white-space:nowrap">{{ n.created_at|d('%d %b') }}</span>
+        </div>
+        <p class="sub" style="white-space:pre-line">{{ n.body }}</p>
+        <div style="display:flex;gap:14px;margin-top:6px;font-size:13px">
+          <form method="post" action="{{ url_for('pin_notice', notice_id=n.id) }}">{{ csrf() }}<button class="link-btn">{{ 'Unpin' if n.pinned else 'Pin to top' }}</button></form>
+          <form method="post" action="{{ url_for('delete_notice', notice_id=n.id) }}" data-confirm="Delete this notice?">{{ csrf() }}<button class="link-btn danger">Delete</button></form>
+        </div>
+      </li>
+    {% else %}<li class="empty">No notices yet.</li>{% endfor %}
+    </ul>
+  </section>
+  <aside class="card card-pad">
+    <h2 style="margin-bottom:14px">Post a notice</h2>
+    <form method="post" class="grid" style="gap:12px">
+      {{ csrf() }}
+      <label class="field">Title<input type="text" name="title" maxlength="140" required></label>
+      <label class="field">Message<textarea name="body" required rows="5"></textarea></label>
+      <label class="field">Who should see it<select name="audience"><option value="All">Everyone</option><option value="Boys">Boys block</option><option value="Girls">Girls block</option></select></label>
+      <label class="check"><input type="checkbox" name="pinned"> Pin to top</label>
+      <button class="btn btn-block">Post notice</button>
+    </form>
+  </aside>
+</div>
+{% endblock %}

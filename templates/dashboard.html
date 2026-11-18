@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% from "_macros.html" import bill_pill, complaint_pill, prorate_note %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Dashboard</h1><p>{{ today|d('%A, %d %B %Y') }}</p></div>
+  <div class="head-actions">
+    <a class="btn btn-ghost" href="{{ url_for('rent') }}">Record payment</a>
+    <a class="btn" href="{{ url_for('admit') }}">+ Admit resident</a>
+  </div>
+</div>
+
+{% set occ = (100 * s.occupied / s.beds)|round|int if s.beds else 0 %}
+<div class="stats">
+  <div class="card stat">
+    <div class="value">{{ occ }}%</div>
+    <div class="label">occupancy · {{ s.occupied }} of {{ s.beds }} beds</div>
+    <div class="meter"><span style="width:{{ occ }}%"></span></div>
+  </div>
+  <div class="card stat">
+    <div class="value">{{ s.beds - s.occupied }}</div>
+    <div class="label">vacant beds · {% for b in blocks %}{{ b.block }} {{ b.beds - b.occupied }}{{ ' · ' if not loop.last }}{% endfor %}</div>
+  </div>
+  <div class="card stat">
+    <div class="value">{{ s.collected|inr }}</div>
+    <div class="label">collected in {{ month|d('%B %Y') }}</div>
+  </div>
+  <a class="card stat" href="{{ url_for('rent', status='overdue') }}" style="color:inherit;text-decoration:none">
+    <div class="value warn">{{ s.pending|inr }}</div>
+    <div class="label">rent pending · {{ s.pending_bills }} bill{{ 's' if s.pending_bills != 1 }}{% if s.overdue_bills %} · <span style="color:var(--danger)">{{ s.overdue_bills }} overdue</span>{% endif %}</div>
+  </a>
+  <a class="card stat" href="{{ url_for('complaints') }}" style="color:inherit;text-decoration:none">
+    <div class="value {{ 'danger' if s.open_complaints }}">{{ s.open_complaints }}</div>
+    <div class="label">open complaints</div>
+  </a>
+</div>
+
+<div class="grid grid-2">
+  <section class="card">
+    <div class="card-head"><h2>Pending rent</h2><a href="{{ url_for('rent', status='overdue') }}">All bills</a></div>
+    <div class="table-wrap">
+      <table class="table-compact">
+        <thead><tr><th>Resident</th><th>Room</th><th>Month</th><th class="right">Balance</th><th></th></tr></thead>
+        <tbody>
+        {% for b in pending %}
+          <tr>
+            <td><a href="{{ url_for('resident_detail', resident_id=b.rid) }}">{{ b.name }}</a></td>
+            <td>{{ b.room }}</td>
+            <td class="num">{{ b.month|d('%b %Y') }}</td>
+            <td class="right num"><a href="{{ url_for('pay_bill', bill_id=b.id) }}" style="color:inherit">{{ b.balance|inr }}</a></td>
+            <td>{{ bill_pill(b) }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5" class="empty">Everyone is paid up. 🎉</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>Latest complaints</h2><a href="{{ url_for('complaints') }}">All</a></div>
+    <ul class="list">
+      {% for c in complaints %}
+        <li>
+          <div class="title">{{ complaint_pill(c.status) }} <b>{{ c.category }}</b> <span class="muted">· {{ c.name }}, room {{ c.room }}</span></div>
+          <div class="sub">{{ c.description }} <span class="faint">· {{ c.created_at|ago }}</span></div>
+        </li>
+      {% else %}
+        <li class="empty">No complaints yet.</li>
+      {% endfor %}
+    </ul>
+  </section>
+</div>
+
+<div class="grid grid-2">
+  <section class="card">
+    <div class="card-head"><h2>Occupancy by block</h2><a href="{{ url_for('rooms') }}">Room map</a></div>
+    <div style="padding-bottom:14px">
+    {% for b in blocks %}
+      <div class="block-row">
+        <span>{{ b.block }} block</span>
+        <div class="meter"><span style="width:{{ (100 * b.occupied / b.beds)|round|int if b.beds else 0 }}%"></span></div>
+        <span class="right muted num">{{ b.occupied }} / {{ b.beds }} beds</span>
+      </div>
+    {% endfor %}
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>Rent billed vs collected</h2><span class="muted" style="font-size:12px">last 6 months</span></div>
+    <div class="chart" role="img" aria-label="Rent billed and collected for the last six months">
+      {% for t in trend %}
+        <div class="col" title="{{ t.month|d('%B %Y') }}: billed {{ t.billed|inr }}, collected {{ t.collected|inr }}">
+          <div class="bars">
+            <div class="bar billed" style="height:{{ (100 * t.billed / peak)|round(1) }}%"></div>
+            <div class="bar paid" style="height:{{ (100 * t.collected / peak)|round(1) }}%"></div>
+          </div>
+          <span class="lbl">{{ t.month|d('%b') }}</span>
+        </div>
+      {% endfor %}
+    </div>
+    <div class="chart-legend"><span><i class="dot" style="background:var(--border-strong)"></i>Billed</span><span><i class="dot" style="background:var(--brand)"></i>Collected</span></div>
+  </section>
+</div>
+{% endblock %}

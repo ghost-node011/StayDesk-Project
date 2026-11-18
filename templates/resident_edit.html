@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}Edit {{ r.name }}{% endblock %}
+{% block content %}
+<a class="crumb" href="{{ url_for('resident_detail', resident_id=r.id) }}">← {{ r.name }}</a>
+<div class="page-head"><div><h1>Edit details</h1><p>Room, rent and deposit are fixed at admission.</p></div></div>
+<div class="card card-pad" style="max-width:720px">
+  <form method="post">
+    {{ csrf() }}
+    <div class="form-grid">
+      <label class="field full">Full name<input type="text" name="name" required maxlength="100" value="{{ r.name }}"></label>
+      <label class="field">Phone<input type="tel" name="phone" required maxlength="15" value="{{ r.phone }}"></label>
+      <label class="field">College / workplace<input type="text" name="institution" maxlength="120" value="{{ r.institution or '' }}"></label>
+      <label class="field">ID proof<input type="text" name="id_proof" maxlength="60" value="{{ r.id_proof or '' }}"></label>
+      <label class="field">Guardian name<input type="text" name="guardian_name" maxlength="100" value="{{ r.guardian_name or '' }}"></label>
+      <label class="field">Guardian phone<input type="tel" name="guardian_phone" maxlength="15" value="{{ r.guardian_phone or '' }}"></label>
+      <label class="field">Reset portal password <span class="hint">Leave empty to keep it</span><input type="text" name="new_password" minlength="8" autocomplete="off"></label>
+    </div>
+    <div class="form-actions"><a class="btn btn-ghost" href="{{ url_for('resident_detail', resident_id=r.id) }}">Cancel</a><button class="btn">Save</button></div>
+  </form>
+</div>
+{% endblock %}

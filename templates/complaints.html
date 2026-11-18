@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_macros.html" import complaint_pill, csrf %}
+{% block title %}Complaints{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Complaints</h1><p>Residents raise these from their portal.</p></div>
+  <div class="seg">
+    {% set open_n = counts.get('open', 0) + counts.get('in_progress', 0) %}
+    <a href="{{ url_for('complaints') }}" class="{{ 'on' if status == 'active' }}">Needs action <span class="count">{{ open_n }}</span></a>
+    <a href="{{ url_for('complaints', status='open') }}" class="{{ 'on' if status == 'open' }}">Open <span class="count">{{ counts.get('open', 0) }}</span></a>
+    <a href="{{ url_for('complaints', status='in_progress') }}" class="{{ 'on' if status == 'in_progress' }}">In progress <span class="count">{{ counts.get('in_progress', 0) }}</span></a>
+    <a href="{{ url_for('complaints', status='resolved') }}" class="{{ 'on' if status == 'resolved' }}">Resolved <span class="count">{{ counts.get('resolved', 0) }}</span></a>
+    <a href="{{ url_for('complaints', status='all') }}" class="{{ 'on' if status == 'all' }}">All</a>
+  </div>
+</div>
+<div class="card">
+  <ul class="list">
+  {% for c in complaints %}
+    <li>
+      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div style="min-width:0;flex:1">
+          <div class="title">{{ complaint_pill(c.status) }} <b>{{ c.title }}</b> <span class="pill">{{ c.category }}</span></div>
+          <div class="sub"><a href="{{ url_for('resident_detail', resident_id=c.rid) }}">{{ c.name }}</a>, room {{ c.room }} · {{ c.created_at|ago }}{% if c.resolved_at %} · resolved {{ c.resolved_at|d }}{% endif %}</div>
+          <p style="margin:8px 0 0">{{ c.description }}</p>
+          {% if c.warden_note %}<p class="hint" style="margin-top:4px">Warden: {{ c.warden_note }}</p>{% endif %}
+        </div>
+      </div>
+      <form method="post" action="{{ url_for('update_complaint', complaint_id=c.id) }}" class="complaint-form">
+        {{ csrf() }}<input type="hidden" name="back" value="{{ request.full_path }}">
+        <select name="status" aria-label="Status">{% for k, v in statuses.items() %}<option value="{{ k }}" {{ 'selected' if c.status == k }}>{{ v }}</option>{% endfor %}</select>
+        <input type="text" name="warden_note" maxlength="300" placeholder="Note for the resident (optional)" value="{{ c.warden_note or '' }}" aria-label="Note">
+        <button class="btn btn-ghost">Update</button>
+      </form>
+    </li>
+  {% else %}
+    <li class="empty">Nothing here. 👍</li>
+  {% endfor %}
+  </ul>
+</div>
+{% endblock %}
